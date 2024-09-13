@@ -5,8 +5,13 @@ name = "pypi"
 
 [packages]
 pydantic = "*"
+email-validator = "*"
+phonenumbers = "*"
+pydantic-extra-types = "*"
+fastapi = {extras = ["standard"], version = "*"}
 
 [dev-packages]
+ipython = "*"
 
 [requires]
 python_version = "3.12"
