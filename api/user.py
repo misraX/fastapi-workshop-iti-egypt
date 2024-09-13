@@ -8,14 +8,16 @@ from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 
-from models.user import User, UserBulkUpdate
+from models.user import User
+from schemas.response_schemas.user import UserBulkUpdateResponseSchema
 
-user_router = APIRouter(tags=["user"], prefix="/user")
+user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user")
+user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user")
 
 users_db: Dict[int, User] = {}
 
 
-@user_router.get('')
+@user_router_v1.get('')
 def get_user_list() -> list[User]:
     """
     List all users from the global DB `users_db`
@@ -25,14 +27,9 @@ def get_user_list() -> list[User]:
     return list(users_db.values())
 
 
-@user_router.post('')
+@user_router_v1.post('')
 def create_user(user: User) -> User:
-    """
-    Create a new user
 
-    :param user: User
-    :return: User
-    """
     global users_db
     user = user.dict()
     user_model = User(**user)
@@ -42,7 +39,7 @@ def create_user(user: User) -> User:
     return user_model
 
 
-@user_router.post('/bulk-creation')
+@user_router_v1.post('/bulk-creation')
 def bulk_create_user(users: list[User]) -> list[User]:
     """
     Bulk creation of users.
@@ -66,7 +63,7 @@ def bulk_create_user(users: list[User]) -> list[User]:
     return list(users_db.values())
 
 
-@user_router.put('/{user_id}')
+@user_router_v1.put('/{user_id}')
 def update_user(user: User, user_id: int) -> User:
     """
     Update a give user.
@@ -88,8 +85,8 @@ def update_user(user: User, user_id: int) -> User:
     raise HTTPException(400, 'User Does not exists.')
 
 
-@user_router.put('/bulk-update/')
-def bulk_update_user(users: list[User]) -> UserBulkUpdate:
+@user_router_v1.put('/bulk-update/')
+def bulk_update_user(users: list[User]) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
 
@@ -115,6 +112,30 @@ def bulk_update_user(users: list[User]) -> UserBulkUpdate:
         else:
             errors.append(user)
 
-    user_response = UserBulkUpdate(updated_users=updated_users, errors=errors)
+    user_response = UserBulkUpdateResponseSchema(updated_users=updated_users, errors=errors)
 
     return user_response
+
+
+@user_router_v2.put('/bulk-update/')
+def bulk_update_user(users: Dict[int, User]) -> UserBulkUpdateResponseSchema:
+    """
+    Bulk updates for existing users.
+
+    Major improvements:
+    - Avoid user_id Duplications
+      - Duplication caused override on the objects, based on the last id:user
+    - Avoid looping over users that do not exist in our DB
+
+
+    :param users: Dict[UserBulkUpdateRequestSchema] Dict of users
+    :return: list[User] list of Updated users.
+    """
+    errors: Optional[list[User]] = []
+    updated_users: Optional[list[User]] = []
+    for user_id in users.keys():
+        if users_db.get(user_id):
+            updated_users.append(users[user_id])
+        else:
+            errors.append(users[user_id])
+    return UserBulkUpdateResponseSchema(errors=errors, updated_users=updated_users)

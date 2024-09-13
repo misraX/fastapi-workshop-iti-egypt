@@ -18,6 +18,4 @@ class User(BaseModel):
     user_email: EmailStr
 
 
-class UserBulkUpdate(BaseModel):
-    updated_users: Optional[list[User]]
-    errors: Optional[list[User]]
+
