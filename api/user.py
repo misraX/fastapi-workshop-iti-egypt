@@ -5,30 +5,38 @@ Intro to FastAPI
 """
 from typing import Optional, Iterable
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from core.database import users_db  # noqa
 from models.user import User
 from schemas.response_schemas.user import UserBulkUpdateResponseSchema
 from services.user import UserService
 
-user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user")
-user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user")
+
+def service_state_setter(
+        request: Request,
+        user_service: UserService = Depends(UserService)
+):
+    request.state.user_service = user_service
+
+
+user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user", dependencies=[Depends(service_state_setter)])
+user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user", dependencies=[Depends(service_state_setter)])
 
 
 
 @user_router_v1.get('')
-def get_user_list(user_name: Optional[str] = None, user_service: UserService = Depends(UserService)) -> Iterable[User]:
+def get_user_list(request: Request, user_name: Optional[str] = None) -> Iterable[User]:
     """
     List all users from the global DB `users_db`
 
     :return: list[User]
     """
-    return user_service.get_user_list(user_name=user_name)
+    return request.state.user_service.get_user_list(user_name=user_name)
 
 
 @user_router_v1.get('/{user_id}')
-def get_user_by_id(user_id: int, user_service: UserService = Depends(UserService)) -> User:
+def get_user_by_id(user_id: int, request: Request) -> User:
     """
     Just select an ID from the global users_db
 
@@ -36,21 +44,21 @@ def get_user_by_id(user_id: int, user_service: UserService = Depends(UserService
     >>> user_by_id = db['111']
 
     :param user_id: int
-    :param user_service: UserService
+    :param request: Request
     :return: User
     """
 
-    return user_service.get_user_by_id(user_id)
+    return request.state.user_service.get_user_by_id(user_id)
 
 @user_router_v1.post('')
-def create_user(user: User, user_service: UserService = Depends(UserService)) -> User:
-    return user_service.create_user(user)
+def create_user(user: User, request: Request) -> User:
+    return request.state.user_service.create_user(user)
 
 
 @user_router_v1.post('/bulk-creation')
 def bulk_create_user(
         users: list[User],
-        user_service: UserService = Depends(UserService)
+        request: Request
 ) -> Iterable[User]:
     """
     Bulk creation of users.
@@ -63,17 +71,17 @@ def bulk_create_user(
     - The list is empty, and we're appending new items.
 
     :param users: list[User]
-    :param user_service: UserService
+    :param request: Request
     :return: list[User]
     """
-    return user_service.bulk_create_user(users)
+    return request.state.user_service.bulk_create_user(users)
 
 
 @user_router_v1.put('/{user_id}')
 def update_user(
         user: User,
         user_id: int,
-        user_service: UserService = Depends(UserService)
+        request: Request
 ) -> User:
     """
     Update a give user.
@@ -85,17 +93,17 @@ def update_user(
 
     :param user: User
     :param user_id: int
-    :param user_service: UserService
+    :param request: Request
     :raise HTTPException: If the user doesn't exist
     :return: User
     """
-    return user_service.update_user(user_id, user)
+    return request.state.user_service.update_user(user_id, user)
 
 
 @user_router_v1.put('/bulk-update/')
 def bulk_update_users(
         users: list[User],
-        user_service: UserService = Depends(UserService)
+        request: Request
 ) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
@@ -109,9 +117,10 @@ def bulk_update_users(
      meaning that if the user exist, the return list will include the user values.
 
     :param users: list[User] list of Users
+    :param request: Request
     :return: list[User] list of Updated users.
     """
-    updated_users, errors = user_service.bulk_update_users(
+    updated_users, errors = request.state.user_service.bulk_update_users(
         users=users,
     )
     user_response = UserBulkUpdateResponseSchema(updated_users=updated_users, errors=errors)
@@ -122,7 +131,7 @@ def bulk_update_users(
 @user_router_v2.put('/bulk-update/')
 def bulk_update_user(
         users: dict[int, User],
-        user_service: UserService = Depends(UserService)
+        request: Request
 ) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
@@ -134,8 +143,8 @@ def bulk_update_user(
 
 
     :param users: Dict[UserBulkUpdateRequestSchema] Dict of users
-    :param user_service: UserService
+    :param request: Request
     :return: list[User] list of Updated users.
     """
-    updated_users, errors = user_service.bulk_update_users_by_dict_key(users=users)
+    updated_users, errors = request.state.user_service.bulk_update_users_by_dict_key(users=users)
     return UserBulkUpdateResponseSchema(errors=errors, updated_users=updated_users)

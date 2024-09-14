@@ -47,8 +47,8 @@ class UserService(object):
         :return: User
         """
         global users_db
-        user = self._user_repository.get_by_id(user.user_id)
-        if user:
+        user_exist = self._user_repository.get_by_id(user.user_id)
+        if user_exist:
             raise HTTPException(400, 'User already exists.')
         user_created = self._user_repository.create_user(user=user)
         return user_created
