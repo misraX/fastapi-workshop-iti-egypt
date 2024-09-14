@@ -94,7 +94,10 @@ def update_user(
 
 
 @user_router_v1.put('/bulk-update/')
-def bulk_update_user(users: list[User]) -> UserBulkUpdateResponseSchema:
+def bulk_update_users(
+        users: list[User],
+        user_service: UserService = Depends(UserService)
+) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
 
@@ -109,17 +112,9 @@ def bulk_update_user(users: list[User]) -> UserBulkUpdateResponseSchema:
     :param users: list[User] list of Users
     :return: list[User] list of Updated users.
     """
-    global users_db
-
-    updated_users: Optional[list[User]] = []
-    errors: Optional[list[User]] = []
-    for user in users:
-        if users_db.get(user.user_id):
-            users_db[user.user_id] = user
-            updated_users.append(user)
-        else:
-            errors.append(user)
-
+    updated_users, errors = user_service.bulk_update_users(
+        users=users,
+    )
     user_response = UserBulkUpdateResponseSchema(updated_users=updated_users, errors=errors)
 
     return user_response

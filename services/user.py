@@ -73,3 +73,14 @@ class UserService(object):
             return self._user_repository.update_user(user_id=user_id, user=user)
 
         raise HTTPException(400, 'User Does not exists.')
+
+    def bulk_update_users(self, users):
+        updated_users: Optional[list[User]] = []
+        errors: Optional[list[User]] = []
+        for user in users:
+            if self._user_repository.get_by_id(user.user_id):
+                self._user_repository.update_user(user_id=user.user_id, user=user)
+                updated_users.append(user)
+            else:
+                errors.append(user)
+        return updated_users, errors
