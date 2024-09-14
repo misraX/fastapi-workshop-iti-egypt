@@ -9,6 +9,7 @@ email-validator = "*"
 phonenumbers = "*"
 pydantic-extra-types = "*"
 fastapi = {extras = ["standard"], version = "*"}
+jinja2 = "*"
 
 [dev-packages]
 ipython = "*"

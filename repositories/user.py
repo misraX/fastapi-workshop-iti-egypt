@@ -3,17 +3,18 @@ from typing import Optional, ValuesView, Iterable
 
 from core.database import users_db
 from models.user import User
+from repositories.abstract import BaseRepository
 
 
-class UserRepository(object):
+class UserRepository(BaseRepository):
     def __init__(self):
         self._database = users_db
 
-    def get_by_id(self, user_id: int) -> Optional[User]:
+    def get_by_id(self, entity_id: int) -> Optional[User]:
         user_ids: KeysView = self._database.keys()
-        if user_id not in user_ids:
+        if entity_id not in user_ids:
             return None
-        return self._database.get(user_id)
+        return self._database.get(entity_id)
 
     def get_user_list(self, user_name: Optional[str] = None) -> Optional[Iterable[User]]:
         if user_name:
