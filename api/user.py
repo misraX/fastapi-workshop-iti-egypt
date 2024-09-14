@@ -3,44 +3,73 @@ Intro to FastAPI
 /user
 /user/<id>
 """
+from typing import Optional, Iterable
 
-from typing import Dict, Optional
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Request
+from pydantic import TypeAdapter
 
 from models.user import User
-from schemas.response_schemas.user import UserBulkUpdateResponseSchema
+from schemas.response_schemas.user import UserBulkUpdateResponseSchema, UserResponseSchema
+from services.user import UserService
 
-user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user")
-user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user")
 
-users_db: Dict[int, User] = {}
+def service_state_setter(
+        request: Request,
+        user_service: UserService = Depends(UserService)
+):
+    request.state.user_service = user_service
+
+
+user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user", dependencies=[Depends(service_state_setter)])
+user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user", dependencies=[Depends(service_state_setter)])
+
 
 
 @user_router_v1.get('')
-def get_user_list() -> list[User]:
+def get_user_list(request: Request, user_name: Optional[str] = None) -> Iterable[User]:
     """
     List all users from the global DB `users_db`
 
     :return: list[User]
     """
-    return list(users_db.values())
+    return request.state.user_service.get_user_list(user_name=user_name)
 
+
+@user_router_v1.get('/{user_id}')
+def get_user_by_id(user_id: int, request: Request) -> UserResponseSchema:
+    """
+    Just select an ID from the global users_db
+
+    >>> db = { "111": {"user_name"} }
+    >>> user_by_id = db['111']
+
+    :param user_id: int
+    :param request: Request
+    :return: UserResponseSchema
+    """
+    user = request.state.user_service.get_user_by_id(user_id=user_id)
+    user_response = UserResponseSchema(**user.model_dump())
+    return user_response
 
 @user_router_v1.post('')
-def create_user(user: User) -> User:
+def create_user(user: User, request: Request) -> UserResponseSchema:
+    """
+    Create a new user.
 
-    global users_db
-    user = user.dict()
-    user_model = User(**user)
-    if users_db.get(user_model.user_id):
-        raise HTTPException(400, 'User already exists.')
-    users_db[user_model.user_id] = user_model
-    return user_model
+    :param user: User
+    :param request: Request
+    :return: UserResponseSchema
+    """
+    user = request.state.user_service.create_user(user)
+    user_response = UserResponseSchema(**user.model_dump())
+    return user_response
 
 
 @user_router_v1.post('/bulk-creation')
-def bulk_create_user(users: list[User]) -> list[User]:
+def bulk_create_user(
+        users: list[User],
+        request: Request
+) -> list[UserResponseSchema]:
     """
     Bulk creation of users.
 
@@ -52,19 +81,23 @@ def bulk_create_user(users: list[User]) -> list[User]:
     - The list is empty, and we're appending new items.
 
     :param users: list[User]
-    :return: list[User]
+    :param request: Request
+    :return: TypeAdapter[list[UserResponseSchema]]
     """
-    global users_db
+    users = request.state.user_service.bulk_create_user(users)
+    users_dump_dict = []
     for user in users:
-        if users_db.get(user.user_id):
-            continue
-        users_db[user.user_id] = user
-
-    return list(users_db.values())
+        users_dump_dict.append(user.model_dump())
+    users_response = TypeAdapter(list[UserResponseSchema]).validate_python(users_dump_dict)
+    return users_response
 
 
 @user_router_v1.put('/{user_id}')
-def update_user(user: User, user_id: int) -> User:
+def update_user(
+        user: User,
+        user_id: int,
+        request: Request
+) -> UserResponseSchema:
     """
     Update a give user.
 
@@ -75,18 +108,20 @@ def update_user(user: User, user_id: int) -> User:
 
     :param user: User
     :param user_id: int
+    :param request: Request
     :raise HTTPException: If the user doesn't exist
-    :return: User
+    :return: UserResponseSchema
     """
-    global users_db
-    if users_db.get(user_id):
-        users_db[user.user_id] = user
-        return user
-    raise HTTPException(400, 'User Does not exists.')
+    user_by_id = request.state.user_service.update_user(user_id=user_id, user=user)
+    user_response = UserResponseSchema(**user_by_id.model_dump())
+    return user_response
 
 
 @user_router_v1.put('/bulk-update/')
-def bulk_update_user(users: list[User]) -> UserBulkUpdateResponseSchema:
+def bulk_update_users(
+        users: list[User],
+        request: Request
+) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
 
@@ -99,26 +134,22 @@ def bulk_update_user(users: list[User]) -> UserBulkUpdateResponseSchema:
      meaning that if the user exist, the return list will include the user values.
 
     :param users: list[User] list of Users
+    :param request: Request
     :return: list[User] list of Updated users.
     """
-    global users_db
-
-    updated_users: Optional[list[User]] = []
-    errors: Optional[list[User]] = []
-    for user in users:
-        if users_db.get(user.user_id):
-            users_db[user.user_id] = user
-            updated_users.append(user)
-        else:
-            errors.append(user)
-
+    updated_users, errors = request.state.user_service.bulk_update_users(
+        users=users,
+    )
     user_response = UserBulkUpdateResponseSchema(updated_users=updated_users, errors=errors)
 
     return user_response
 
 
 @user_router_v2.put('/bulk-update/')
-def bulk_update_user(users: Dict[int, User]) -> UserBulkUpdateResponseSchema:
+def bulk_update_user(
+        users: dict[int, User],
+        request: Request
+) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
 
@@ -129,13 +160,8 @@ def bulk_update_user(users: Dict[int, User]) -> UserBulkUpdateResponseSchema:
 
 
     :param users: Dict[UserBulkUpdateRequestSchema] Dict of users
+    :param request: Request
     :return: list[User] list of Updated users.
     """
-    errors: Optional[list[User]] = []
-    updated_users: Optional[list[User]] = []
-    for user_id in users.keys():
-        if users_db.get(user_id):
-            updated_users.append(users[user_id])
-        else:
-            errors.append(users[user_id])
+    updated_users, errors = request.state.user_service.bulk_update_users_by_dict_key(users=users)
     return UserBulkUpdateResponseSchema(errors=errors, updated_users=updated_users)
