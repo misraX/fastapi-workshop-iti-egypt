@@ -6,7 +6,7 @@ Intro to FastAPI
 from collections.abc import KeysView
 from typing import Optional, Iterable
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 
 from core.database import users_db  # noqa
 from models.user import User
@@ -71,7 +71,11 @@ def bulk_create_user(
 
 
 @user_router_v1.put('/{user_id}')
-def update_user(user: User, user_id: int) -> User:
+def update_user(
+        user: User,
+        user_id: int,
+        user_service: UserService = Depends(UserService)
+) -> User:
     """
     Update a give user.
 
@@ -82,14 +86,11 @@ def update_user(user: User, user_id: int) -> User:
 
     :param user: User
     :param user_id: int
+    :param user_service: UserService
     :raise HTTPException: If the user doesn't exist
     :return: User
     """
-    global users_db
-    if users_db.get(user_id):
-        users_db[user.user_id] = user
-        return user
-    raise HTTPException(400, 'User Does not exists.')
+    return user_service.update_user(user_id, user)
 
 
 @user_router_v1.put('/bulk-update/')

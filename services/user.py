@@ -66,3 +66,10 @@ class UserService(object):
                 continue
             self._user_repository.create_user(user=user)
         return self._user_repository.get_user_list()
+
+    def update_user(self, user_id: int, user: User) -> User:
+        global users_db
+        if self._user_repository.get_by_id(user_id):
+            return self._user_repository.update_user(user_id=user_id, user=user)
+
+        raise HTTPException(400, 'User Does not exists.')

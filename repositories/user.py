@@ -31,3 +31,6 @@ class UserRepository(object):
         self._database[user_model.user_id] = user_model
         return user_model
 
+    def update_user(self, user_id, user):
+        self._database[user_id] = user
+        return user
