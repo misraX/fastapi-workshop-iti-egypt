@@ -25,3 +25,9 @@ class UserRepository(object):
             )
             return user_by_name
         return self._database.values()
+
+    def create_user(self, user: User) -> User:
+        user = user.model_dump()
+        user_model = User(**user)
+        self._database[user_model.user_id] = user_model
+        return user_model

@@ -3,7 +3,6 @@ from typing import Optional
 
 from fastapi import HTTPException, Depends
 
-from core.database import users_db
 from exceptions.user import UserNotFoundException
 from models.user import User
 from repositories.user import UserRepository
@@ -42,3 +41,13 @@ class UserService(object):
         :return: Optional[Iterable[User]]
         """
         return self._user_repository.get_user_list(user_name=user_name)
+
+    def create_user(self, user: User) -> User:
+        global users_db
+        try:
+            user = self._user_repository.get_by_id(user.user_id)
+        except UserNotFoundException:
+            user_created = self._user_repository.create_user(user=user)
+            return user_created
+        if user:
+            raise HTTPException(400, 'User already exists.')

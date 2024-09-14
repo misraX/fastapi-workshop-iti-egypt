@@ -45,15 +45,8 @@ def get_user_by_id(user_id: int, user_service: UserService = Depends(UserService
     return user_service.get_user_by_id(user_id)
 
 @user_router_v1.post('')
-def create_user(user: User) -> User:
-
-    global users_db
-    user = user.dict()
-    user_model = User(**user)
-    if users_db.get(user_model.user_id):
-        raise HTTPException(400, 'User already exists.')
-    users_db[user_model.user_id] = user_model
-    return user_model
+def create_user(user: User, user_service: UserService = Depends(UserService)) -> User:
+    return user_service.create_user(user)
 
 
 @user_router_v1.post('/bulk-creation')
