@@ -12,6 +12,8 @@ fastapi = {extras = ["standard"], version = "*"}
 
 [dev-packages]
 ipython = "*"
+pympler = "*"
+dask = {extras = ["distributed"], version = "*"}
 
 [requires]
 python_version = "3.12"

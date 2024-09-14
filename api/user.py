@@ -3,8 +3,8 @@ Intro to FastAPI
 /user
 /user/<id>
 """
-
-from typing import Dict, Optional
+from collections.abc import KeysView
+from typing import Dict, Optional, Iterable
 
 from fastapi import APIRouter, HTTPException
 
@@ -18,13 +18,13 @@ users_db: Dict[int, User] = {}
 
 
 @user_router_v1.get('')
-def get_user_list() -> list[User]:
+def get_user_list() -> Iterable[User]:
     """
     List all users from the global DB `users_db`
 
     :return: list[User]
     """
-    return list(users_db.values())
+    return users_db.values()
 
 
 @user_router_v1.post('')
@@ -40,7 +40,7 @@ def create_user(user: User) -> User:
 
 
 @user_router_v1.post('/bulk-creation')
-def bulk_create_user(users: list[User]) -> list[User]:
+def bulk_create_user(users: list[User]) -> Iterable[User]:
     """
     Bulk creation of users.
 
@@ -60,7 +60,7 @@ def bulk_create_user(users: list[User]) -> list[User]:
             continue
         users_db[user.user_id] = user
 
-    return list(users_db.values())
+    return users_db.values()
 
 
 @user_router_v1.put('/{user_id}')
@@ -133,7 +133,8 @@ def bulk_update_user(users: Dict[int, User]) -> UserBulkUpdateResponseSchema:
     """
     errors: Optional[list[User]] = []
     updated_users: Optional[list[User]] = []
-    for user_id in users.keys():
+    users_ids: KeysView = users.keys()
+    for user_id in users_ids:
         if users_db.get(user_id):
             updated_users.append(users[user_id])
         else:
