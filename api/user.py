@@ -8,17 +8,9 @@ from typing import Optional, Iterable
 from fastapi import APIRouter, Depends, Request
 from pydantic import TypeAdapter
 
+from dependencies.user_service_dependencies import service_state_setter
 from models.user import User
 from schemas.response_schemas.user import UserBulkUpdateResponseSchema, UserResponseSchema
-from services.user import UserService
-
-
-def service_state_setter(
-        request: Request,
-        user_service: UserService = Depends(UserService)
-):
-    request.state.user_service = user_service
-
 
 user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user", dependencies=[Depends(service_state_setter)])
 user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user", dependencies=[Depends(service_state_setter)])
