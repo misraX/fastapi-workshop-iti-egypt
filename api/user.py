@@ -3,29 +3,53 @@ Intro to FastAPI
 /user
 /user/<id>
 """
-from collections.abc import KeysView
-from typing import Dict, Optional, Iterable
+import os
+from collections.abc import KeysView, ValuesView
+from typing import Optional, Iterable
+from urllib.request import Request
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
 
 from models.user import User
 from schemas.response_schemas.user import UserBulkUpdateResponseSchema
-
+from services.user import UserService
+from core.database import users_db # noqa
 user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user")
 user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user")
 
-users_db: Dict[int, User] = {}
 
 
 @user_router_v1.get('')
-def get_user_list() -> Iterable[User]:
+def get_user_list(user_name: Optional[str] = None) -> Iterable[User]:
     """
     List all users from the global DB `users_db`
 
     :return: list[User]
     """
+    if user_name:
+        users_values: ValuesView = users_db.values()
+        user_by_name = filter(
+            lambda user: user.user_name == user_name,
+            users_values
+        )  # Select * from users_db where user_name == user_name
+        return user_by_name
     return users_db.values()
 
+
+@user_router_v1.get('/{user_id}')
+def get_user_by_id(user_id: int, user_service: UserService = Depends(UserService)) -> User:
+    """
+    Just select an ID from the global users_db
+
+    >>> db = { "111": {"user_name"} }
+    >>> user_by_id = db['111']
+
+    :param user_id: int
+    :param user_service: UserService
+    :return: User
+    """
+
+    return user_service.get_user_by_id(user_id)
 
 @user_router_v1.post('')
 def create_user(user: User) -> User:
@@ -55,10 +79,20 @@ def bulk_create_user(users: list[User]) -> Iterable[User]:
     :return: list[User]
     """
     global users_db
+    # Avoid users creation of emails that don't belong to our organization
+    # If email provider == @iti (Business logic)
+
+    # etc
+
     for user in users:
         if users_db.get(user.user_id):
             continue
-        users_db[user.user_id] = user
+        # allow all emails to register through the creation API <Feature>
+        # feature is required from the product.
+        # feature flag to enable/disable the email
+        if not os.environ.get('ENABLE_ALL_ORG_EMAILS'):
+            if user.user_email.endswith('@iti'):
+                users_db[user.user_id] = user
 
     return users_db.values()
 
@@ -118,7 +152,7 @@ def bulk_update_user(users: list[User]) -> UserBulkUpdateResponseSchema:
 
 
 @user_router_v2.put('/bulk-update/')
-def bulk_update_user(users: Dict[int, User]) -> UserBulkUpdateResponseSchema:
+def bulk_update_user(users: dict[int, User]) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
 

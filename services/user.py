@@ -1,0 +1,29 @@
+from fastapi import HTTPException, Depends
+
+from core.database import users_db
+from exceptions.user import UserNotFoundException
+from models.user import User
+from repositories.user import UserRepository
+
+
+class UserService(object):
+    def __init__(self, user_repository: UserRepository = Depends(UserRepository)):
+        self._user_repository = user_repository
+
+    def get_user_by_id(self, user_id: int) -> User:
+        """
+        Get user by id.
+
+        - Consume the repository querying
+          - Query user by a give id
+            - if the user does not exist, HANDLE EXCEPTION
+            - if the user has been found, return the user
+        :param user_id:
+        :return:
+        """
+        try:
+            user = self._user_repository.get_by_id(user_id)
+            # publisher.publish(requested_usr=request.user, requested_user_id= user_id)
+            return user
+        except UserNotFoundException as exception:
+            raise HTTPException(404, detail=f"{exception}")
