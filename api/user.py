@@ -3,7 +3,6 @@ Intro to FastAPI
 /user
 /user/<id>
 """
-import os
 from collections.abc import KeysView
 from typing import Optional, Iterable
 
@@ -50,7 +49,10 @@ def create_user(user: User, user_service: UserService = Depends(UserService)) ->
 
 
 @user_router_v1.post('/bulk-creation')
-def bulk_create_user(users: list[User]) -> Iterable[User]:
+def bulk_create_user(
+        users: list[User],
+        user_service: UserService = Depends(UserService)
+) -> Iterable[User]:
     """
     Bulk creation of users.
 
@@ -62,25 +64,10 @@ def bulk_create_user(users: list[User]) -> Iterable[User]:
     - The list is empty, and we're appending new items.
 
     :param users: list[User]
+    :param user_service: UserService
     :return: list[User]
     """
-    global users_db
-    # Avoid users creation of emails that don't belong to our organization
-    # If email provider == @iti (Business logic)
-
-    # etc
-
-    for user in users:
-        if users_db.get(user.user_id):
-            continue
-        # allow all emails to register through the creation API <Feature>
-        # feature is required from the product.
-        # feature flag to enable/disable the email
-        if not os.environ.get('ENABLE_ALL_ORG_EMAILS'):
-            if user.user_email.endswith('@iti'):
-                users_db[user.user_id] = user
-
-    return users_db.values()
+    return user_service.bulk_create_user(users)
 
 
 @user_router_v1.put('/{user_id}')

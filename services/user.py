@@ -3,7 +3,6 @@ from typing import Optional
 
 from fastapi import HTTPException, Depends
 
-from exceptions.user import UserNotFoundException
 from models.user import User
 from repositories.user import UserRepository
 
@@ -21,16 +20,14 @@ class UserService(object):
             - if the user does not exist, HANDLE EXCEPTION
             - if the user has been found, return the user
         :param user_id:
-        :return:
+        :return: User
         """
-        try:
-            user = self._user_repository.get_by_id(user_id)
-            # publisher.publish(requested_usr=request.user, requested_user_id= user_id)
-            return user
-        except UserNotFoundException as exception:
-            raise HTTPException(404, detail=f"{exception}")
+        user = self._user_repository.get_by_id(user_id)
+        if not user:
+            raise HTTPException(404, detail="User not found")
+        return user
 
-    def get_user_list(self, user_name: str) -> Optional[Iterable[User]]:
+    def get_user_list(self, user_name: Optional[str] = None) -> Optional[Iterable[User]]:
         """
         List users, with filters if any
 
@@ -43,11 +40,29 @@ class UserService(object):
         return self._user_repository.get_user_list(user_name=user_name)
 
     def create_user(self, user: User) -> User:
+        """
+        Create a new user.
+
+        :param user: User
+        :return: User
+        """
         global users_db
-        try:
-            user = self._user_repository.get_by_id(user.user_id)
-        except UserNotFoundException:
-            user_created = self._user_repository.create_user(user=user)
-            return user_created
+        user = self._user_repository.get_by_id(user.user_id)
         if user:
             raise HTTPException(400, 'User already exists.')
+        user_created = self._user_repository.create_user(user=user)
+        return user_created
+
+    def bulk_create_user(self, users: list[User]) -> Iterable[User]:
+        """
+        Bulk create users
+
+        :param users: list[User]
+        :return: Iterable[User]
+        """
+        global users_db
+        for user in users:
+            if self._user_repository.get_by_id(user.user_id):
+                continue
+            self._user_repository.create_user(user=user)
+        return self._user_repository.get_user_list()
