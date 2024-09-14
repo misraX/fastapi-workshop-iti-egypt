@@ -3,13 +3,12 @@ Intro to FastAPI
 /user
 /user/<id>
 """
-from typing import Optional, Iterable
+from typing import Optional, Iterable, List
 
 from fastapi import APIRouter, Depends, Request
-
-from core.database import users_db  # noqa
+from pydantic import parse_obj_as, TypeAdapter
 from models.user import User
-from schemas.response_schemas.user import UserBulkUpdateResponseSchema
+from schemas.response_schemas.user import UserBulkUpdateResponseSchema, UserResponseSchema
 from services.user import UserService
 
 
@@ -36,7 +35,7 @@ def get_user_list(request: Request, user_name: Optional[str] = None) -> Iterable
 
 
 @user_router_v1.get('/{user_id}')
-def get_user_by_id(user_id: int, request: Request) -> User:
+def get_user_by_id(user_id: int, request: Request) -> UserResponseSchema:
     """
     Just select an ID from the global users_db
 
@@ -45,21 +44,31 @@ def get_user_by_id(user_id: int, request: Request) -> User:
 
     :param user_id: int
     :param request: Request
-    :return: User
+    :return: UserResponseSchema
     """
-
-    return request.state.user_service.get_user_by_id(user_id)
+    user = request.state.user_service.get_user_by_id(user_id=user_id)
+    user_response = UserResponseSchema(**user.model_dump())
+    return user_response
 
 @user_router_v1.post('')
-def create_user(user: User, request: Request) -> User:
-    return request.state.user_service.create_user(user)
+def create_user(user: User, request: Request) -> UserResponseSchema:
+    """
+    Create a new user.
+
+    :param user: User
+    :param request: Request
+    :return: UserResponseSchema
+    """
+    user = request.state.user_service.create_user(user)
+    user_response = UserResponseSchema(**user.model_dump())
+    return user_response
 
 
 @user_router_v1.post('/bulk-creation')
 def bulk_create_user(
         users: list[User],
         request: Request
-) -> Iterable[User]:
+) -> list[UserResponseSchema]:
     """
     Bulk creation of users.
 
@@ -72,9 +81,14 @@ def bulk_create_user(
 
     :param users: list[User]
     :param request: Request
-    :return: list[User]
+    :return: TypeAdapter[list[UserResponseSchema]]
     """
-    return request.state.user_service.bulk_create_user(users)
+    users = request.state.user_service.bulk_create_user(users)
+    users_dump_dict = []
+    for user in users:
+        users_dump_dict.append(user.model_dump())
+    users_response = TypeAdapter(list[UserResponseSchema]).validate_python(users_dump_dict)
+    return users_response
 
 
 @user_router_v1.put('/{user_id}')
@@ -82,7 +96,7 @@ def update_user(
         user: User,
         user_id: int,
         request: Request
-) -> User:
+) -> UserResponseSchema:
     """
     Update a give user.
 
@@ -95,9 +109,11 @@ def update_user(
     :param user_id: int
     :param request: Request
     :raise HTTPException: If the user doesn't exist
-    :return: User
+    :return: UserResponseSchema
     """
-    return request.state.user_service.update_user(user_id, user)
+    user_by_id = request.state.user_service.update_user(user_id=user_id, user=user)
+    user_response = UserResponseSchema(**user_by_id.model_dump())
+    return user_response
 
 
 @user_router_v1.put('/bulk-update/')
