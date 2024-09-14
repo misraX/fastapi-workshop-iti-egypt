@@ -1,3 +1,6 @@
+from collections.abc import Iterable
+from typing import Optional
+
 from fastapi import HTTPException, Depends
 
 from core.database import users_db
@@ -27,3 +30,15 @@ class UserService(object):
             return user
         except UserNotFoundException as exception:
             raise HTTPException(404, detail=f"{exception}")
+
+    def get_user_list(self, user_name: str) -> Optional[Iterable[User]]:
+        """
+        List users, with filters if any
+
+        Allowed filters are:
+         - user_name
+
+        :param user_name: str
+        :return: Optional[Iterable[User]]
+        """
+        return self._user_repository.get_user_list(user_name=user_name)

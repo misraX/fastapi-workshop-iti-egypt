@@ -4,36 +4,29 @@ Intro to FastAPI
 /user/<id>
 """
 import os
-from collections.abc import KeysView, ValuesView
+from collections.abc import KeysView
 from typing import Optional, Iterable
-from urllib.request import Request
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends
 
+from core.database import users_db  # noqa
 from models.user import User
 from schemas.response_schemas.user import UserBulkUpdateResponseSchema
 from services.user import UserService
-from core.database import users_db # noqa
+
 user_router_v1 = APIRouter(tags=["v1"], prefix="/v1/user")
 user_router_v2 = APIRouter(tags=["v2"], prefix="/v2/user")
 
 
 
 @user_router_v1.get('')
-def get_user_list(user_name: Optional[str] = None) -> Iterable[User]:
+def get_user_list(user_name: Optional[str] = None, user_service: UserService = Depends(UserService)) -> Iterable[User]:
     """
     List all users from the global DB `users_db`
 
     :return: list[User]
     """
-    if user_name:
-        users_values: ValuesView = users_db.values()
-        user_by_name = filter(
-            lambda user: user.user_name == user_name,
-            users_values
-        )  # Select * from users_db where user_name == user_name
-        return user_by_name
-    return users_db.values()
+    return user_service.get_user_list(user_name=user_name)
 
 
 @user_router_v1.get('/{user_id}')
