@@ -3,7 +3,6 @@ Intro to FastAPI
 /user
 /user/<id>
 """
-from collections.abc import KeysView
 from typing import Optional, Iterable
 
 from fastapi import APIRouter, Depends
@@ -121,7 +120,10 @@ def bulk_update_users(
 
 
 @user_router_v2.put('/bulk-update/')
-def bulk_update_user(users: dict[int, User]) -> UserBulkUpdateResponseSchema:
+def bulk_update_user(
+        users: dict[int, User],
+        user_service: UserService = Depends(UserService)
+) -> UserBulkUpdateResponseSchema:
     """
     Bulk updates for existing users.
 
@@ -132,14 +134,8 @@ def bulk_update_user(users: dict[int, User]) -> UserBulkUpdateResponseSchema:
 
 
     :param users: Dict[UserBulkUpdateRequestSchema] Dict of users
+    :param user_service: UserService
     :return: list[User] list of Updated users.
     """
-    errors: Optional[list[User]] = []
-    updated_users: Optional[list[User]] = []
-    users_ids: KeysView = users.keys()
-    for user_id in users_ids:
-        if users_db.get(user_id):
-            updated_users.append(users[user_id])
-        else:
-            errors.append(users[user_id])
+    updated_users, errors = user_service.bulk_update_users_by_dict_key(users=users)
     return UserBulkUpdateResponseSchema(errors=errors, updated_users=updated_users)

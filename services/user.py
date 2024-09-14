@@ -1,4 +1,4 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, KeysView
 from typing import Optional
 
 from fastapi import HTTPException, Depends
@@ -74,7 +74,7 @@ class UserService(object):
 
         raise HTTPException(400, 'User Does not exists.')
 
-    def bulk_update_users(self, users):
+    def bulk_update_users(self, users: list[User]) -> tuple[list[User], list[User]]:
         updated_users: Optional[list[User]] = []
         errors: Optional[list[User]] = []
         for user in users:
@@ -83,4 +83,16 @@ class UserService(object):
                 updated_users.append(user)
             else:
                 errors.append(user)
+        return updated_users, errors
+
+    def bulk_update_users_by_dict_key(self, users: dict[int, User]):
+        errors: Optional[list[User]] = []
+        updated_users: Optional[list[User]] = []
+        users_ids: KeysView = users.keys()
+        for user_id in users_ids:
+            if self._user_repository.get_by_id(user_id):
+                updated_users.append(users[user_id])
+                self._user_repository.update_user(user_id=user_id, user=users[user_id])
+            else:
+                errors.append(users[user_id])
         return updated_users, errors
