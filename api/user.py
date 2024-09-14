@@ -3,10 +3,11 @@ Intro to FastAPI
 /user
 /user/<id>
 """
-from typing import Optional, Iterable, List
+from typing import Optional, Iterable
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import parse_obj_as, TypeAdapter
+from pydantic import TypeAdapter
+
 from models.user import User
 from schemas.response_schemas.user import UserBulkUpdateResponseSchema, UserResponseSchema
 from services.user import UserService
