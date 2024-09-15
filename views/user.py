@@ -5,9 +5,11 @@ from fastapi.templating import Jinja2Templates
 
 from dependencies.user_service_dependencies import service_state_setter
 
-user_templates_router = APIRouter(tags=["user_templates"], dependencies=[
-    Depends(service_state_setter)
-])
+user_templates_router = APIRouter(
+    tags=["user_templates"],
+    dependencies=[Depends(service_state_setter)],
+    include_in_schema=False
+)
 templates = Jinja2Templates(directory="templates")
 
 
