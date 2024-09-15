@@ -5,9 +5,10 @@ from fastapi import HTTPException, Depends
 
 from models.user import User
 from repositories.user import UserRepository
+from services.abstract import BaseService
 
 
-class UserService(object):
+class UserService(BaseService):
     def __init__(self, user_repository: UserRepository = Depends(UserRepository)):
         self._user_repository = user_repository
 

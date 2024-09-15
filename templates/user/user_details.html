@@ -1,0 +1,8 @@
+{% extends 'shared/base.html' %}
+{% block main %}
+    <div class="row">
+        {% if user %}
+            <div class="col"><p>{{ user.user_name }} - {{ user.user_email }}</p></div>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'shared/base.html' %}
+{% block main %}
+    <div class="row">
+        <ul>
+            {% for user in users %}
+                <li>
+                    <a href="{{ url_for('get_user_by_id_view', user_id=user.user_id) }}">
+                        <p>{{ user.user_name }} - {{ user.user_email }}</p>
+                    </a>
+                </li>
+
+            {% endfor %}
+        </ul>
+    </div>
+
+{% endblock %}
